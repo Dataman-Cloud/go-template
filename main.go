@@ -19,6 +19,8 @@ func main() {
 	config := InitConfig(*envFile)
 	log.SetLevel(config.LogLevel)
 
+	fmt.Println(config)
+
 	/*使用log示例*/
 	LogDemo()
 
