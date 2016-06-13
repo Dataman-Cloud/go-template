@@ -12,6 +12,9 @@ localrun:
 
 local: localbuild localrun
 
+fmt:
+	go fmt ./...
+
 
 help:
 	@echo "demo project for sry"
