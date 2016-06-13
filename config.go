@@ -18,12 +18,6 @@ type Config struct {
 	Arr            []string
 }
 
-/* 缺少环境变量 程序退出 使用log.Fatalf打印*/
-func exitMissingEnv(env string) {
-	log.Fatalf("program exit missing config for env %s", env)
-	os.Exit(1)
-}
-
 func InitConfig(envFile string) *Config {
 	loadEnvFile(envFile)
 
@@ -121,4 +115,9 @@ func removeComments(s string) (_ string) {
 		}
 	}
 	return s
+}
+
+func exitMissingEnv(env string) {
+	log.Fatalf("program exit missing config for env %s", env)
+	os.Exit(1)
 }
