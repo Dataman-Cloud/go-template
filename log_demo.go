@@ -27,7 +27,7 @@ import (
 // 如果加用于调试的信息 加DEBUG log.Debugln打印
 
 func getInfo() string {
-	return "iiiiii"
+	return "log testing"
 }
 
 func doSomething() error {

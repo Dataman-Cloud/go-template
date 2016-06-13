@@ -1,0 +1,4 @@
+env1=foo_file
+env2=bar_file
+log_level=debug
+arr=foo,bar

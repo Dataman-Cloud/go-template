@@ -5,10 +5,10 @@ build:
 run:
 
 localbuild:
-	go build .
+	go build -o build/go-template .
 
 localrun:
-	./go-template
+	./build/go-template
 
 local: localbuild localrun
 
