@@ -1,0 +1,11 @@
+foobar:
+  url: http://localhost:8080/foo/bar
+  mode: strict
+  notification_types: deletion,creating
+
+
+barfoo:
+  url: http://localhost:8080/foo/bar
+  mode: soft
+  notification_types: deletion,creating
+
