@@ -146,9 +146,11 @@ func (sink *Sink) run() {
 	for {
 		select {
 		case msg := <-sink.events:
-			if err := sink.Write(msg); err != nil {
-				log.Errorf("Failed to send msg to %s. %s", sink.Name, err.Error())
-			}
+			go func(msg Message) {
+				if err := sink.Write(msg); err != nil {
+					log.Errorf("Failed to send msg to %s. %s", sink.Name, err.Error())
+				}
+			}(msg)
 
 		}
 	}
