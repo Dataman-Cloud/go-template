@@ -8,11 +8,13 @@ func NewMessage() *Message {
 
 // load unsent messages from storage
 func LoadMessages() []Message {
+	// initilize all message marked as persisted
 	return nil
 }
 
 // persist a message into storage
 func (message *Message) Persist() error {
+	message.Persisted = true
 	return nil
 }
 

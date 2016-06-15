@@ -12,6 +12,17 @@ var engine_ *NotificationEngine
 var once sync.Once
 
 const (
+	MessageStaleTime   = time.Duration(time.Minute * 10) // message not sent after this value marked as stale
+	RetryAfer          = time.Duration(time.Second * 2)  // initial delay if message not sent successfully
+	RetryBackoffFactor = 2                               // backoff factor for a retry
+)
+
+const (
+	SendingChanSize     = 1 << 10
+	SinkDumpingChanSIze = 1 << 10
+)
+
+const (
 	MODE_STRICT        = "strict"
 	MODE_BEST_DELIVERY = "best_deliver"
 )
@@ -26,7 +37,7 @@ type Sink struct {
 	Url               string `yaml:"url"`
 	Mode              string `yaml:"mode"`
 	NotificationTypes string `yaml:"notification_types"`
-	events            chan Message
+	DumpChan          chan *Message
 }
 
 type Message struct {
@@ -35,15 +46,15 @@ type Message struct {
 	ResourceId   string    `json:"resource_id"`
 	ResourceType string    `json:"resource_type"`
 	Time         time.Time `json:"time"`
-	SinkName     string
-	RetryTime    uint64
+	Sink         *Sink
+	Persisted    bool
+	DumpBegin    time.Time
 }
 
 type NotificationEngine struct {
-	Runing bool
-	Sinks  []*Sink
-	events chan Message
-	unsend chan struct{}
+	Runing      bool
+	Sinks       []*Sink
+	SendingChan chan *Message
 }
 
 func NewEngine() *NotificationEngine {
@@ -53,35 +64,32 @@ func NewEngine() *NotificationEngine {
 
 	once.Do(func() {
 		engine_ = &NotificationEngine{
-			Runing: false,
-			events: make(chan Message, 999),
-			Sinks:  make([]*Sink, 0),
+			Runing:      false,
+			SendingChan: make(chan *Message, SendingChanSize),
+			Sinks:       make([]*Sink, 0),
 		}
-		// TODO
-		// 1 parseSinks
-		sink1 := &Sink{Name: "Name1",
-			Url:               "http://localhost:8080/foo/bar",
-			Mode:              "strict",
-			NotificationTypes: MESSAGE_TYPE_APP_DELETION,
-			events:            make(chan Message, 999)}
-		sink2 := &Sink{Name: "Name2",
-			Url:               "http://localhost:8089/foo/bar",
-			Mode:              "strict",
-			NotificationTypes: MESSAGE_TYPE_APP_DELETION,
-			events:            make(chan Message, 999)}
-
-		engine_.Sinks = append(engine_.Sinks, sink1)
-		engine_.Sinks = append(engine_.Sinks, sink2)
-
-		for _, sink := range engine_.Sinks {
-			go sink.run()
-		}
-
-		go engine_.Start()
-
 	})
 
 	return engine_
+}
+
+func (engine *NotificationEngine) LoadSinks() error {
+	sink1 := &Sink{Name: "Name1",
+		Url:               "http://localhost:8080/foo/bar",
+		Mode:              "strict",
+		NotificationTypes: MESSAGE_TYPE_APP_DELETION,
+		DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
+
+	sink2 := &Sink{Name: "Name2",
+		Url:               "http://localhost:8089/foo/bar",
+		Mode:              "strict",
+		NotificationTypes: MESSAGE_TYPE_APP_DELETION,
+		DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
+
+	engine_.Sinks = append(engine_.Sinks, sink1)
+	engine_.Sinks = append(engine_.Sinks, sink2)
+
+	return nil
 }
 
 func (engine *NotificationEngine) Start() error {
@@ -90,32 +98,35 @@ func (engine *NotificationEngine) Start() error {
 		return nil
 	}
 
-	//启动时发送数据库里的消息
-	go engine.RetryUnSend()
+	err := engine.LoadSinks()
+	if err != nil {
+		log.Error("Loading Sink error")
+		return err
+	}
+
+	for _, sink := range engine_.Sinks {
+		go sink.StartDump()
+	}
+
+	go engine.HandleStaleMessages()
 
 	for {
 		select {
 		case msg := <-engine.events:
 			for _, sink := range engine.Sinks {
-
 				if strings.Contains(sink.NotificationTypes, msg.Type) {
-					continue
-				}
-				// 为空为第一次发的消息  sinkname有值是retry
-				if msg.SinkName == "" || msg.SinkName == sink.Name {
-					sink.events <- msg
+					msg.Sink = sink
+					sink.DumpChan << msg
 				}
 			}
-		case <-time.After(time.Second * 30):
-			go engine.RetryUnSend()
 		}
 	}
 
 	return nil
 }
 
-func (engine *NotificationEngine) RetryUnSend() {
-
+// TODO
+func (engine *NotificationEngine) HandleStaleMessages() {
 	msgs := LoadMessages()
 
 	for _, msg := range msgs {
@@ -125,58 +136,60 @@ func (engine *NotificationEngine) RetryUnSend() {
 
 }
 
-func (engine *NotificationEngine) Write(msg Message) {
-	go func(msg Message) {
-		engine.events <- msg
-	}(msg)
-}
-
 func (sink *Sink) Write(msg Message) error {
 
 	var err error
-	if sink.Mode == MODE_STRICT {
-		err = sink.strictWrite(msg)
-	} else {
-		err = sink.delivery(msg)
-	}
 	return err
 }
 
-func (sink *Sink) run() {
+func (sink *Sink) StartDump() {
 	for {
 		select {
-		case msg := <-sink.events:
-			go func(msg Message) {
-				if err := sink.Write(msg); err != nil {
-					log.Errorf("Failed to send msg to %s. %s", sink.Name, err.Error())
-				}
-			}(msg)
-
+		case msg := <-sink.DumpChan:
+			msg.DumpBegin = time.Now()
+			if sink.Mode == MODE_STRICT {
+				go sink.StrictWrite(msg)
+			} else {
+				go sink.BestDeliverWrite(msg)
+			}
 		}
 	}
 }
 
-func (sink *Sink) delivery(msg Message) error {
-	//发送到Sink url
+func (sink *Sink) BestDeliverWrite(msg *Message) {
+	err := sink.HttpPost(msg)
+	if err != nil {
+		log.Error("dump message failed", msg.Id)
+	}
+
 	return nil
 }
 
-func (sink *Sink) strictWrite(msg Message) error {
-
-	err := sink.delivery(msg)
-
+func (sink *Sink) StrictWrite(msg *Message) {
+	err := sink.HttpPost(msg)
 	if err != nil {
+		log.Error("dump message failed, retry after", msg.Id, retryAfter*RetryBackoffFactor)
+		_ := msg.Persist()
+		sink.StrictWriteRetry(msg, RetryAfer)
+	}
+}
 
-		//		if msg.RetryTime > 5 {
-		//			log.Errorln("Delete msg after 5 retry")
-		//			return err
-		//		}
-
-		msg.SinkName = sink.Name
-		msg.Time = time.Now()
-		msg.RetryTime++
-		msg.Persist()
+func (sink *Sink) StrictWriteRetry(msg *Message, retryAfter time.Duration) {
+	if time.Now().Sub(msg.DumpBegin) > MessageStaleTime {
+		log.Error("message stable, stop sending", msg.Id)
+		return // stop dumping goroutine now
 	}
 
-	return err
+	time.Sleep(retryAfter)
+	err := sink.HttpPost(msg)
+	if err != nil {
+		log.Error("dump message failed, retry after", msg.Id, retryAfter*RetryBackoffFactor)
+		sink.StrictWriteRetry(msg, retryAfter*RetryBackoffFactor)
+	} else {
+		msg.Remove() // send success remove mssage & stop goroutine
+	}
+}
+
+func (sink *Sink) HttpPost(msg *Message) error {
+	return nil
 }
