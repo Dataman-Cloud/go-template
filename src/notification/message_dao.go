@@ -1,9 +1,5 @@
 package notification
 
-import (
-	"time"
-)
-
 // create a message
 func NewMessage() *Message {
 	message := &Message{}
@@ -11,7 +7,7 @@ func NewMessage() *Message {
 }
 
 // load unsent messages from storage
-func LoadMessages() []*Message {
+func LoadMessages() []Message {
 	return nil
 }
 
