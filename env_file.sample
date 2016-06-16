@@ -2,3 +2,6 @@ env1=foo_file
 env2=bar_file
 log_level=debug
 arr=foo,bar
+Notification="http://localhost:8080/foo/bar?name=aaa&mode=strict&notification_types=deletion,creating|
+	http://localhost:8081/foo/bar?name=aaa&mode=strict&notification_types=creating|
+	http://localhost:8082/foo/bar?name=aaa&mode=strict&notification_types=deletion"

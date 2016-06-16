@@ -21,6 +21,7 @@ type Config struct {
 	Host           string
 	Port           uint16
 	DataBase       string
+	Notification   string
 }
 
 func GetConfig() Config {

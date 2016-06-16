@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Dataman-Cloud/go-template/src/config"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -79,19 +81,26 @@ func NewEngine() *NotificationEngine {
 }
 
 func (engine *NotificationEngine) LoadSinks() error {
-	sink1 := &Sink{Name: "Name1",
-		Url:               "http://localhost:8080/foo/bar",
-		Mode:              "strict",
-		NotificationTypes: MESSAGE_TYPE_APP_DELETION,
-		DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
 
-	sink2 := &Sink{Name: "Name2",
-		Url:               "http://localhost:8089/foo/bar",
-		Mode:              "strict",
-		NotificationTypes: MESSAGE_TYPE_APP_DELETION,
-		DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
+	sinks := strings.Split(config.GetConfig().Notification, "|")
 
-	engine_.Sinks = append(engine_.Sinks, sink1, sink2)
+	for _, value := range sinks {
+
+		urlSink, err := url.Parse(strings.TrimSpace(value))
+
+		if err != nil {
+			continue
+		}
+
+		v := urlSink.Query()
+
+		sink := &Sink{Name: v.Get("name"),
+			Url:               urlSink.Host + urlSink.Path,
+			Mode:              v.Get("mode"),
+			NotificationTypes: v.Get("notification_types"),
+			DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
+		engine_.Sinks = append(engine_.Sinks, sink)
+	}
 
 	return nil
 }
@@ -146,7 +155,7 @@ func (engine *NotificationEngine) HandleStaleMessages() {
 	msgs := LoadMessagesBefore(MessageStaleTime)
 
 	for _, msg := range msgs {
-		engine.Write(msg)
+		engine.Write(&msg)
 	}
 
 }
@@ -159,7 +168,7 @@ func (engine *NotificationEngine) HandleOldMessages() {
 	msgs := LoadMessagesAfter(MessageStaleTime)
 
 	for _, msg := range msgs {
-		engine.Write(msg)
+		engine.Write(&msg)
 	}
 
 }
