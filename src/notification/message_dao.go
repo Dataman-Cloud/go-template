@@ -1,6 +1,8 @@
 package notification
 
 import (
+	"time"
+
 	"github.com/Dataman-Cloud/go-template/src/db"
 )
 
@@ -10,8 +12,26 @@ func NewMessage() *Message {
 	return message
 }
 
+func CopyMessage(msg *Message) *Message {
+	message := &Message{}
+
+	message.Id = msg.Id
+	message.Type = msg.Type
+	message.ResourceId = msg.ResourceId
+	message.ResourceType = msg.ResourceType
+	return message
+}
+
+func CleanTooOldMessage(duration time.Duration) error {
+	return nil
+}
+
+func LoadMessagesAfter(duration time.Duration) []*Message {
+
+}
+
 // load unsent messages from storage
-func LoadMessages() []*Message {
+func LoadMessagesBefore(duration time.Duration) []*Message {
 	// initilize all message marked as persisted
 
 	//	msgs := make([]*Message, 0)

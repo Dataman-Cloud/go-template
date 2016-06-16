@@ -18,6 +18,8 @@ const (
 	MessageStaleTime   = time.Duration(time.Minute * 10) // message not sent after this value marked as stale
 	RetryAfer          = time.Duration(time.Second * 2)  // initial delay if message not sent successfully
 	RetryBackoffFactor = 2                               // backoff factor for a retry
+	RetryTime          = time.Minute * 10                // 每隔一段时间清理下unsend的消息 interval
+	MessageDeleteTime  = time.Hour * 24
 )
 
 const (
@@ -49,9 +51,10 @@ type Message struct {
 	ResourceId   string    `json:"resource_id"`
 	ResourceType string    `json:"resource_type"`
 	Time         time.Time `json:"time"`
-	Sink         *Sink
-	Persisted    bool
-	DumpBegin    time.Time
+	//Sink         *Sink
+	SinkName  string
+	Persisted bool
+	DumpBegin time.Time
 }
 
 type NotificationEngine struct {
@@ -94,6 +97,7 @@ func (engine *NotificationEngine) LoadSinks() error {
 	return nil
 }
 
+
 func (engine *NotificationEngine) Start() error {
 	if engine.Runing {
 		log.Infoln("NotificationEngine already start")
@@ -117,10 +121,20 @@ func (engine *NotificationEngine) Start() error {
 		case msg := <-engine.SendingChan:
 			for _, sink := range engine.Sinks {
 				if strings.Contains(sink.NotificationTypes, msg.Type) {
-					msg.Sink = sink
-					sink.DumpChan <- msg
+
+					// 新来的消息 或者从数据库里读出属于该sink的
+					if msg.SinkName == "" {
+						copyMsg := CopyMessage(msg)
+						sink.DumpChan <- copyMsg
+					} if msg.SinkName == sink.Name{
+						sink.DumpChan <- msg
+					}
+
 				}
 			}
+		case <-time.Tick(RetryTime):
+			go engine.HandleOldMessages()
+
 		}
 	}
 
@@ -129,10 +143,24 @@ func (engine *NotificationEngine) Start() error {
 
 // TODO
 func (engine *NotificationEngine) HandleStaleMessages() {
-	msgs := LoadMessages()
+
+	//获取10分钟以内的消息发送
+	msgs := LoadMessagesBefore(MessageStaleTime)
 
 	for _, msg := range msgs {
-		msg.Remove()
+		engine.Write(msg)
+	}
+
+}
+
+func (engine *NotificationEngine) HandleOldMessages() {
+
+	CleanTooOldMessage(MessageDeleteTime)
+
+	//获取10分钟以外的消息发送
+	msgs := LoadMessagesAfter(MessageStaleTime)
+
+	for _, msg := range msgs {
 		engine.Write(msg)
 	}
 
@@ -142,12 +170,6 @@ func (engine *NotificationEngine) Write(msg *Message) {
 	go func(msg *Message) {
 		engine.SendingChan <- msg
 	}(msg)
-}
-
-func (sink *Sink) Write(msg Message) error {
-
-	var err error
-	return err
 }
 
 func (sink *Sink) StartDump() {
@@ -177,8 +199,15 @@ func (sink *Sink) StrictWrite(msg *Message) {
 	err := sink.HttpPost(msg)
 	if err != nil {
 		log.Error("dump message failed, retry after", msg.Id, RetryAfer*RetryBackoffFactor)
-		msg.Persist()
+		msg.SinkName = sink.Name
+		if !msg.Persisted {
+			msg.Persist()
+		}
 		sink.StrictWriteRetry(msg, RetryAfer)
+	} else {
+		if msg.Persisted {
+			msg.Remove()
+		}
 	}
 }
 
