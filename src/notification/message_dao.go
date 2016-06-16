@@ -50,13 +50,14 @@ func LoadMessagesAfter(duration time.Duration) []Message {
 	msgs := []Message{}
 	db := db.DB()
 
-	sql := fmt.Sprintf(`select * from message where dump_time < %d`, time.Now().Add(duration*(-1)))
+	sql := `select * from message where`
+	sql = sql + ` dump_time <= '` + time.Now().Add(duration*(-1)).Format(time.RFC3339) + `'`
 
+	//sql := fmt.Sprintf(`select * from message where dump_time > %s`, t.Format(time.RFC3339))
+	fmt.Println(sql)
 	err := db.Select(&msgs, sql)
 	if err != nil {
-
 		log.Errorln(" Query from db error: " + err.Error())
-
 	}
 
 	return msgs
@@ -69,8 +70,11 @@ func LoadMessagesBefore(duration time.Duration) []Message {
 	msgs := []Message{}
 	db := db.DB()
 
-	sql := fmt.Sprintf(`select * from message where dump_time > %d`, time.Now().Add(duration*(-1)))
+	sql := `select * from message where`
+	sql = sql + ` dump_time > '` + time.Now().Add(duration*(-1)).Format(time.RFC3339) + `'`
 
+	//sql := fmt.Sprintf(`select * from message where dump_time > %s`, t.Format(time.RFC3339))
+	fmt.Println(sql)
 	err := db.Select(&msgs, sql)
 	if err != nil {
 		log.Errorln(" Query from db error: " + err.Error())
