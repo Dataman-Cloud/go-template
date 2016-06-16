@@ -1,6 +1,9 @@
 package notification
 
 import (
+	"encoding/json"
+	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -86,8 +89,7 @@ func (engine *NotificationEngine) LoadSinks() error {
 		NotificationTypes: MESSAGE_TYPE_APP_DELETION,
 		DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
 
-	engine_.Sinks = append(engine_.Sinks, sink1)
-	engine_.Sinks = append(engine_.Sinks, sink2)
+	engine_.Sinks = append(engine_.Sinks, sink1, sink2)
 
 	return nil
 }
@@ -112,11 +114,11 @@ func (engine *NotificationEngine) Start() error {
 
 	for {
 		select {
-		case msg := <-engine.events:
+		case msg := <-engine.SendingChan:
 			for _, sink := range engine.Sinks {
 				if strings.Contains(sink.NotificationTypes, msg.Type) {
 					msg.Sink = sink
-					sink.DumpChan << msg
+					sink.DumpChan <- msg
 				}
 			}
 		}
@@ -134,6 +136,12 @@ func (engine *NotificationEngine) HandleStaleMessages() {
 		engine.Write(msg)
 	}
 
+}
+
+func (engine *NotificationEngine) Write(msg *Message) {
+	go func(msg *Message) {
+		engine.SendingChan <- msg
+	}(msg)
 }
 
 func (sink *Sink) Write(msg Message) error {
@@ -162,14 +170,14 @@ func (sink *Sink) BestDeliverWrite(msg *Message) {
 		log.Error("dump message failed", msg.Id)
 	}
 
-	return nil
+	return
 }
 
 func (sink *Sink) StrictWrite(msg *Message) {
 	err := sink.HttpPost(msg)
 	if err != nil {
-		log.Error("dump message failed, retry after", msg.Id, retryAfter*RetryBackoffFactor)
-		_ := msg.Persist()
+		log.Error("dump message failed, retry after", msg.Id, RetryAfer*RetryBackoffFactor)
+		msg.Persist()
 		sink.StrictWriteRetry(msg, RetryAfer)
 	}
 }
@@ -191,5 +199,34 @@ func (sink *Sink) StrictWriteRetry(msg *Message, retryAfter time.Duration) {
 }
 
 func (sink *Sink) HttpPost(msg *Message) error {
+
+	body, err := json.Marshal(msg)
+	if err != nil {
+		log.Errorf("Marshal msg. %s", err.Error())
+		return err
+	}
+
+	request, err := http.NewRequest("POST", sink.Url, strings.NewReader(string(body)))
+
+	if err != nil {
+		log.Errorf("NewRequest failed. %s", err.Error())
+		return err
+
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Errorf("Post request failed. %s", err.Error())
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Errorf("Response failed. code %d", resp.StatusCode)
+		err = errors.New("Response failed")
+		return err
+	}
+
 	return nil
 }
