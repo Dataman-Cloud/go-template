@@ -14,7 +14,7 @@ import (
 
 func MysqlInit() {
 	DB()
-	upgradeDB()
+	//	upgradeDB()
 }
 
 var db *sqlx.DB

@@ -33,39 +33,45 @@ var config Config
 func InitConfig(envFile string) *Config {
 	loadEnvFile(envFile)
 
-	env1 := os.Getenv("ENV1")
-	if env1 == "" {
-		exitMissingEnv("ENV1")
-	}
+	/*	env1 := os.Getenv("ENV1")
+		if env1 == "" {
+			exitMissingEnv("ENV1")
+		}
 
-	env2 := os.Getenv("ENV2")
-	if env2 == "" {
-		exitMissingEnv("ENV2")
-	}
+		env2 := os.Getenv("ENV2")
+		if env2 == "" {
+			exitMissingEnv("ENV2")
+		}
 
-	a_mysql_passwd := os.Getenv("A_MYSQL_PASSWD")
-	if a_mysql_passwd == "" {
-		exitMissingEnv("A_MYSQL_PASSWD")
-	}
+		a_mysql_passwd := os.Getenv("A_MYSQL_PASSWD")
+		if a_mysql_passwd == "" {
+			exitMissingEnv("A_MYSQL_PASSWD")
+		}
 
-	log_level := os.Getenv("LOG_LEVEL")
-	if log_level == "error" {
-		config.LogLevel = log.ErrorLevel
-	} else if log_level == "info" {
-		config.LogLevel = log.InfoLevel
-	} else {
-		config.LogLevel = log.DebugLevel
-	}
+		log_level := os.Getenv("LOG_LEVEL")
+		if log_level == "error" {
+			config.LogLevel = log.ErrorLevel
+		} else if log_level == "info" {
+			config.LogLevel = log.InfoLevel
+		} else {
+			config.LogLevel = log.DebugLevel
+		}
 
-	arr := os.Getenv("ARR")
-	if arr == "" {
-		exitMissingEnv("ARR")
-	}
+		arr := os.Getenv("ARR")
+		if arr == "" {
+			exitMissingEnv("ARR")
+		}
 
-	config.Env1 = env1
-	config.Env2 = env2
-	config.A_MYSQL_PASSWD = a_mysql_passwd
-	config.Arr = strings.Split(arr, ",")
+		config.Env1 = env1
+		config.Env2 = env2
+		config.A_MYSQL_PASSWD = a_mysql_passwd
+		config.Arr = strings.Split(arr, ",")
+	*/
+	config.Host = "127.0.0.1"
+	config.UserName = "root"
+	config.PassWord = "111111"
+	config.Port = 3306
+	config.DataBase = "notification"
 
 	return &config
 }
