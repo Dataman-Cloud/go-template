@@ -4,10 +4,11 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/Dataman-Cloud/go-template/src/config"
 	log "github.com/Sirupsen/logrus"
 )
 
-var config *Config
+//var config *Config
 
 var (
 	envFile = flag.String("config", "env_file", "")
@@ -16,7 +17,7 @@ var (
 func main() {
 	flag.Parse()
 
-	config := InitConfig(*envFile)
+	config := config.InitConfig(*envFile)
 	log.SetLevel(config.LogLevel)
 
 	fmt.Println(config)

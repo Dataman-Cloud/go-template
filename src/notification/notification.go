@@ -46,15 +46,14 @@ type Sink struct {
 }
 
 type Message struct {
-	Id           string    `json:"id"`
-	Type         string    `json:"type"`
-	ResourceId   string    `json:"resource_id"`
-	ResourceType string    `json:"resource_type"`
-	Time         time.Time `json:"time"`
-	//Sink         *Sink
-	SinkName  string
-	Persisted bool
-	DumpBegin time.Time
+	Id           string    `json:"id" db:"id"`
+	Type         string    `json:"type" db:"type"`
+	ResourceId   string    `json:"resource_id" db:"resource_id"`
+	ResourceType string    `json:"resource_type" db:"resource_type"`
+	Time         time.Time `json:"time" db:"time"`
+	SinkName     string    `json:"sink_name" db:"sink_name"`
+	DumpBegin    time.Time `json:"dump_time" db:"dump_time"`
+	Persisted    bool
 }
 
 type NotificationEngine struct {
@@ -97,7 +96,6 @@ func (engine *NotificationEngine) LoadSinks() error {
 	return nil
 }
 
-
 func (engine *NotificationEngine) Start() error {
 	if engine.Runing {
 		log.Infoln("NotificationEngine already start")
@@ -126,7 +124,7 @@ func (engine *NotificationEngine) Start() error {
 					if msg.SinkName == "" {
 						copyMsg := CopyMessage(msg)
 						sink.DumpChan <- copyMsg
-					} if msg.SinkName == sink.Name{
+					} else if msg.SinkName == sink.Name {
 						sink.DumpChan <- msg
 					}
 

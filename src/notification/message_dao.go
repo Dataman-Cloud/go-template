@@ -23,6 +23,20 @@ func CopyMessage(msg *Message) *Message {
 }
 
 func CleanTooOldMessage(duration time.Duration) error {
+
+	db := db.DB()
+	_, err := db.NamedExec(
+		"delete from message where id = :id",
+		map[string]interface{}{
+			"id": message.Id,
+		},
+	)
+
+	if err != nil {
+		err = errors.New("Remove messgae error: " + err.Error())
+		return err
+	}
+
 	return nil
 }
 
@@ -89,10 +103,10 @@ func LoadMessagesBefore(duration time.Duration) []*Message {
 
 // persist a message into storage
 func (message *Message) Persist() error {
-	message.Persisted = true
+	//message.Persisted = true
 
 	db := db.DB()
-	sql := `insert into message(id, type, resource_id, resource_type) values(:id, :type, :resource_id, :resource_type)`
+	sql := `insert into message(id, type, resource_id, resource_type,) values(:id, :type, :resource_id, :resource_type)`
 	_, err := db.NamedExec(sql, message)
 	if err != nil {
 		err = errors.New("Insert messgae error: " + err.Error())
