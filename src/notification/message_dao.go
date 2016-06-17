@@ -47,7 +47,7 @@ func LoadMessages(from time.Time, to time.Time) []Message {
 	db := db.DB()
 
 	sql := `SELECT * FROM message WHERE dump_time > '%s' AND dump_time < '%s'`
-	sql := fmt.Sprintf(sql, from.UTC().Format(time.RFC3339), to.UTC().Format(time.RFC3339))
+	sql = fmt.Sprintf(sql, from.UTC().Format(time.RFC3339), to.UTC().Format(time.RFC3339))
 	err := db.Select(&msgs, sql)
 	if err != nil {
 		log.Errorln(" Query from db error: " + err.Error())

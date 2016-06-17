@@ -93,7 +93,7 @@ func (engine *NotificationEngine) LoadSinks() error {
 		v := urlSink.Query()
 
 		sink := &Sink{Name: v.Get("name"),
-			Url:               urlSink.Host + urlSink.Path,
+			Url:               urlSink.Scheme + "://" + urlSink.Host + urlSink.Path,
 			Mode:              v.Get("mode"),
 			NotificationTypes: v.Get("notification_types"),
 			DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
@@ -150,17 +150,17 @@ func (engine *NotificationEngine) Start() error {
 func (engine *NotificationEngine) HandleStaleMessages() {
 
 	//获取10分钟以内的消息发送
-	msgs := LoadMessages(time.Now().Sub(MessageStaleTime), time.Now())
+	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-1), time.Now())
 	for _, msg := range msgs {
 		engine.Write(&msg)
 	}
 }
 
 func (engine *NotificationEngine) PeriodicallyrMessageGC() {
-	CleanOutdateMessagesBefore(time.Now().Sub(MessageDeleteTime))
+	CleanOutdateMessagesBefore(time.Now().Add(MessageDeleteTime * -1))
 
 	//获取10分钟以外的消息发送
-	msgs := LoadMessages(time.Now().Sub(time.Year*10), time.Now().Sub(MessageStaleTime))
+	msgs := LoadMessages(time.Now().Add(MessageDeleteTime*-1), time.Now().Add(MessageStaleTime*-1))
 	for _, msg := range msgs {
 		engine.Write(&msg)
 	}
@@ -206,6 +206,7 @@ func (sink *Sink) StrictWrite(msg *Message) {
 		}
 		sink.StrictWriteRetry(msg, RetryAfer)
 	} else {
+		log.Infoln("dump message successfully", msg)
 		if msg.Persisted {
 			msg.Remove()
 		}
