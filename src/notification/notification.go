@@ -48,8 +48,8 @@ type Sink struct {
 }
 
 type Message struct {
-	Id           string    `json:"id" db:"id"`
-	Type         string    `json:"type" db:"type"`
+	Id           uint64    `json:"id" db:"id"`
+	Type         string    `json:"message_type" db:"message_type"`
 	ResourceId   string    `json:"resource_id" db:"resource_id"`
 	ResourceType string    `json:"resource_type" db:"resource_type"`
 	Time         time.Time `json:"time" db:"time"`
@@ -124,6 +124,7 @@ func (engine *NotificationEngine) Start() error {
 	for {
 		select {
 		case msg := <-engine.SendingChan:
+			log.Infof("msg sink name %s", msg.SinkName)
 			for _, sink := range engine.Sinks {
 				if strings.Contains(sink.NotificationTypes, msg.Type) {
 
@@ -133,6 +134,7 @@ func (engine *NotificationEngine) Start() error {
 						copyMsg.SinkName = sink.Name
 						sink.DumpChan <- copyMsg
 					} else if msg.SinkName == sink.Name {
+						log.Infof("sink name :%s, msg sink_name %s", sink.Name, msg.SinkName)
 						sink.DumpChan <- msg
 					}
 
@@ -151,9 +153,25 @@ func (engine *NotificationEngine) Start() error {
 func (engine *NotificationEngine) HandleStaleMessages() {
 
 	//获取10分钟以内的消息发送
-	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-1), time.Now())
-	for _, msg := range msgs {
-		engine.Write(&msg)
+	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-10), time.Now())
+	//	for i, _ := range msgs {
+	//msg.Persisted = true
+	// copyMsg := CopyMessage(&msg)
+	//		engine.Write(&msgs[i])
+	/*	go func(msg *Message) {
+		log.Infof("w=======rite %s  %#v", msg.SinkName, msg)
+		log.Infof("wwwwww %#v", msg)
+		engine.SendingChan <- msg
+	}(&(msgs[i]))*/
+	//	}
+	for i, _ := range msgs {
+		//msg.Persisted = true
+		//	log.Infof("load sinkname %s", msg.SinkName)
+		//engine.Write(&msg)
+		go func(msg *Message) {
+			log.Infof("write %s", msg.SinkName)
+			engine.SendingChan <- msg
+		}(&msgs[i])
 	}
 }
 
@@ -162,16 +180,31 @@ func (engine *NotificationEngine) PeriodicallyrMessageGC() {
 
 	//获取10分钟以外的消息发送
 	msgs := LoadMessages(time.Now().Add(MessageDeleteTime*-1), time.Now().Add(MessageStaleTime*-1))
-	for _, msg := range msgs {
-		engine.Write(&msg)
+	for i, _ := range msgs {
+		msgs[i].Persisted = true
+		// copyMsg := CopyMessage(&msg)
+		//	engine.Write(copyMsg)
+		/*	go func(msg *Message) {
+			log.Infof("w=======rite %s  %#v", msg.SinkName, msg)
+			log.Infof("wwwwww %#v", msg)
+			engine.SendingChan <- msg
+		}(&(msgs[i]))*/
 	}
 
 }
 
 func (engine *NotificationEngine) Write(msg *Message) {
 	go func(msg *Message) {
+		log.Infof("write %s", msg.SinkName)
 		engine.SendingChan <- msg
 	}(msg)
+	//go write(msg)
+	//	go engine.testWr(msg)
+}
+
+func (engine *NotificationEngine) testWr(msg *Message) {
+	log.Infof("write %s", msg.SinkName)
+	engine.SendingChan <- msg
 }
 
 func (sink *Sink) StartDump() {
@@ -200,7 +233,7 @@ func (sink *Sink) BestDeliverWrite(msg *Message) {
 func (sink *Sink) StrictWrite(msg *Message) {
 	err := sink.HttpPost(msg)
 	if err != nil {
-		log.Error("dump message failed, retry after", msg.Id, RetryAfer*RetryBackoffFactor)
+		log.Error("dump message failed, retry after ", RetryAfer)
 		msg.SinkName = sink.Name
 		if !msg.Persisted {
 			msg.Persist()
@@ -224,7 +257,7 @@ func (sink *Sink) StrictWriteRetry(msg *Message, retryAfter time.Duration) {
 	time.Sleep(retryAfter)
 	err := sink.HttpPost(msg)
 	if err != nil {
-		log.Error("dump message failed, retry after", msg.Id, retryAfter*RetryBackoffFactor)
+		log.Errorln("dump message failed, retry after", retryAfter*RetryBackoffFactor)
 		sink.StrictWriteRetry(msg, retryAfter*RetryBackoffFactor)
 	} else {
 		msg.Remove() // send success remove mssage & stop goroutine
@@ -249,7 +282,6 @@ func (sink *Sink) HttpPost(msg *Message) error {
 
 	client := &http.Client{}
 	resp, err := client.Do(request)
-	defer resp.Body.Close()
 	if err != nil {
 		log.Errorf("Post request failed. %s", err.Error())
 		return err

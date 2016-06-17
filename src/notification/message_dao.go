@@ -46,8 +46,9 @@ func LoadMessages(from time.Time, to time.Time) []Message {
 	msgs := []Message{}
 	db := db.DB()
 
-	sql := `SELECT * FROM message WHERE dump_time > '%s' AND dump_time < '%s'`
-	sql = fmt.Sprintf(sql, from.UTC().Format(time.RFC3339), to.UTC().Format(time.RFC3339))
+	sql := `SELECT id, message_type, sink_name, resource_id, resource_type, dump_time FROM message WHERE dump_time > '%s' AND dump_time < '%s'`
+	sql = fmt.Sprintf(sql, from.Format(time.RFC3339), to.Format(time.RFC3339))
+	log.Info("Loadmessage sql", sql)
 	err := db.Select(&msgs, sql)
 	if err != nil {
 		log.Errorln(" Query from db error: " + err.Error())
@@ -62,12 +63,15 @@ func (message *Message) Persist() error {
 	message.Persisted = true
 
 	db := db.DB()
-	sql := `INSERT INTO message(id, message_type, resource_id, resource_type, sink_name, dump_time) 
-	VALUES(:id, :type, :resource_id, :resource_type,:sink_name,:dump_time)`
+	sql := `INSERT INTO message(message_type, resource_id, resource_type, sink_name, dump_time) 
+	VALUES(:message_type, :resource_id, :resource_type,:sink_name,:dump_time)`
 	_, err := db.NamedExec(sql, message)
 	if err != nil {
+
 		err = errors.New("Insert messgae error: " + err.Error())
+		log.Errorln(err.Error())
 		return err
+
 	}
 
 	return nil
@@ -78,10 +82,9 @@ func (message *Message) Persist() error {
 func (message *Message) Remove() error {
 	db := db.DB()
 	_, err := db.NamedExec(
-		"DELETE FROM message WHERE id = :id and sink_name = :sink_name",
+		"DELETE FROM message WHERE id = :id",
 		map[string]interface{}{
-			"id":        message.Id,
-			"sink_name": message.SinkName,
+			"id": message.Id,
 		},
 	)
 
