@@ -72,7 +72,8 @@ func InitConfig(envFile string) *Config {
 	config.PassWord = "111111"
 	config.Port = 3306
 	config.DataBase = "notification"
-	config.Notification = "http://127.0.0.1:8080/postMan?mode=strict&notification_types=APP_CREATION"
+	config.Notification = `http://127.0.0.1:8080/postMan?name=li&mode=strict&notification_types=APP_CREATION|
+							http://127.0.0.1:8089/postMan?name=fang&mode=strict&notification_types=APP_CREATION`
 	return &config
 }
 

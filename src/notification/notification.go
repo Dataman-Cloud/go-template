@@ -130,6 +130,7 @@ func (engine *NotificationEngine) Start() error {
 					// 新来的消息 或者从数据库里读出属于该sink的
 					if msg.SinkName == "" {
 						copyMsg := CopyMessage(msg)
+						copyMsg.SinkName = sink.Name
 						sink.DumpChan <- copyMsg
 					} else if msg.SinkName == sink.Name {
 						sink.DumpChan <- msg
@@ -206,7 +207,8 @@ func (sink *Sink) StrictWrite(msg *Message) {
 		}
 		sink.StrictWriteRetry(msg, RetryAfer)
 	} else {
-		log.Infoln("dump message successfully", msg)
+
+		log.Infof("dump message successfully %v", *msg)
 		if msg.Persisted {
 			msg.Remove()
 		}
