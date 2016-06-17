@@ -37,14 +37,14 @@ func main() {
 	/*使用log示例*/
 	//	LogDemo()
 
-	msgs := notification.LoadMessagesBefore(time.Minute * 50)
+	//msgs := notification.LoadMessagesBefore(time.Minute * 50)
+
+	//fmt.Println(msgs)
+
+	//msgs = notification.LoadMessagesAfter(time.Minute * 50)
 
 	fmt.Println(msgs)
-
-	msgs = notification.LoadMessagesAfter(time.Minute * 50)
-
-	fmt.Println(msgs)
-	notification.CleanTooOldMessage(time.Minute * 50)
+	notification.CleanOutdateMessagesBefore(time.Minute * 50)
 
 	fmt.Println("birth cry")
 }

@@ -85,11 +85,9 @@ func (engine *NotificationEngine) LoadSinks() error {
 	sinks := strings.Split(config.GetConfig().Notification, "|")
 
 	for _, value := range sinks {
-
 		urlSink, err := url.Parse(strings.TrimSpace(value))
-
 		if err != nil {
-			continue
+			log.Fatal("sink config error")
 		}
 
 		v := urlSink.Query()
@@ -140,7 +138,7 @@ func (engine *NotificationEngine) Start() error {
 				}
 			}
 		case <-time.Tick(RetryTime):
-			go engine.HandleOldMessages()
+			go engine.PeriodicallyrMessageGC()
 
 		}
 	}
@@ -152,21 +150,17 @@ func (engine *NotificationEngine) Start() error {
 func (engine *NotificationEngine) HandleStaleMessages() {
 
 	//获取10分钟以内的消息发送
-	msgs := LoadMessagesBefore(MessageStaleTime)
-
+	msgs := LoadMessages(time.Now().Sub(MessageStaleTime), time.Now())
 	for _, msg := range msgs {
 		engine.Write(&msg)
 	}
-
 }
 
-func (engine *NotificationEngine) HandleOldMessages() {
-
-	CleanTooOldMessage(MessageDeleteTime)
+func (engine *NotificationEngine) PeriodicallyrMessageGC() {
+	CleanOutdateMessagesBefore(time.Now().Sub(MessageDeleteTime))
 
 	//获取10分钟以外的消息发送
-	msgs := LoadMessagesAfter(MessageStaleTime)
-
+	msgs := LoadMessages(time.Now().Sub(time.Year*10), time.Now().Sub(MessageStaleTime))
 	for _, msg := range msgs {
 		engine.Write(&msg)
 	}

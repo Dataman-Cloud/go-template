@@ -1,11 +1,13 @@
 CREATE DATABASE IF NOT EXISTS notification;
 
 CREATE TABLE IF NOT EXISTS message (
-id     VARCHAR(64),
-type     VARCHAR(64),
-resource_id     VARCHAR(64),
-resource_type     VARCHAR(64),
-sink_name  VARCHAR(64),
-dump_time timestamp,
-primary key (id, sink_name)
+  id     bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  message_type     VARCHAR(64),
+  resource_id     bigint(2),
+  resource_type     VARCHAR(64),
+  sink_name  VARCHAR(64),
+  dump_time timestamp,
+  created timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated timestamp NOT NULL DEFAULT ON UPDATE CURRENT_TIMESTAMP,
+  primary key (id)
 );
