@@ -24,12 +24,12 @@ func main() {
 	//log.SetLevel(config.LogLevel)
 	db.MysqlInit()
 	fmt.Println(config)
-	//	message := notification.NewMessage()
+	message := notification.NewMessage()
 
-	//	message.Type = "APP_CREATION"
-	//	message.ResourceId = "22222222"
-	//	message.ResourceType = "3333333"
-	//	message.DumpBegin = time.Now().Add(time.Minute * -18)
+	message.Type = "APP_CREATION"
+	message.ResourceId = 44444444
+	message.ResourceType = "3333333"
+	//message.DumpBegin = time.Now().Add(time.Minute * -18)
 
 	//	message.Remove()
 	//	message.Persist()
@@ -57,7 +57,7 @@ func main() {
 
 	go engin.Start()
 
-	//engin.Write(message)
+	engin.Write(message)
 
 	for {
 		select {

@@ -26,7 +26,7 @@ const (
 
 const (
 	SendingChanSize     = 1 << 10
-	SinkDumpingChanSIze = 1 << 10
+	SinkDumpingChanSize = 1 << 10
 )
 
 const (
@@ -50,7 +50,7 @@ type Sink struct {
 type Message struct {
 	Id           uint64    `json:"id" db:"id"`
 	Type         string    `json:"message_type" db:"message_type"`
-	ResourceId   string    `json:"resource_id" db:"resource_id"`
+	ResourceId   uint64    `json:"resource_id" db:"resource_id"`
 	ResourceType string    `json:"resource_type" db:"resource_type"`
 	Time         time.Time `json:"time" db:"time"`
 	SinkName     string    `json:"sink_name" db:"sink_name"`
@@ -96,7 +96,7 @@ func (engine *NotificationEngine) LoadSinks() error {
 			Url:               urlSink.Scheme + "://" + urlSink.Host + urlSink.Path,
 			Mode:              v.Get("mode"),
 			NotificationTypes: v.Get("notification_types"),
-			DumpChan:          make(chan *Message, SinkDumpingChanSIze)}
+			DumpChan:          make(chan *Message, SinkDumpingChanSize)}
 		engine_.Sinks = append(engine_.Sinks, sink)
 	}
 
@@ -154,24 +154,10 @@ func (engine *NotificationEngine) HandleStaleMessages() {
 
 	//获取10分钟以内的消息发送
 	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-10), time.Now())
-	//	for i, _ := range msgs {
-	//msg.Persisted = true
-	// copyMsg := CopyMessage(&msg)
-	//		engine.Write(&msgs[i])
-	/*	go func(msg *Message) {
-		log.Infof("w=======rite %s  %#v", msg.SinkName, msg)
-		log.Infof("wwwwww %#v", msg)
-		engine.SendingChan <- msg
-	}(&(msgs[i]))*/
-	//	}
 	for i, _ := range msgs {
-		//msg.Persisted = true
+		msgs[i].Persisted = true
 		//	log.Infof("load sinkname %s", msg.SinkName)
-		//engine.Write(&msg)
-		go func(msg *Message) {
-			log.Infof("write %s", msg.SinkName)
-			engine.SendingChan <- msg
-		}(&msgs[i])
+		engine.Write(&msgs[i])
 	}
 }
 
@@ -182,13 +168,7 @@ func (engine *NotificationEngine) PeriodicallyrMessageGC() {
 	msgs := LoadMessages(time.Now().Add(MessageDeleteTime*-1), time.Now().Add(MessageStaleTime*-1))
 	for i, _ := range msgs {
 		msgs[i].Persisted = true
-		// copyMsg := CopyMessage(&msg)
-		//	engine.Write(copyMsg)
-		/*	go func(msg *Message) {
-			log.Infof("w=======rite %s  %#v", msg.SinkName, msg)
-			log.Infof("wwwwww %#v", msg)
-			engine.SendingChan <- msg
-		}(&(msgs[i]))*/
+		engine.Write(&msgs[i])
 	}
 
 }
@@ -198,13 +178,6 @@ func (engine *NotificationEngine) Write(msg *Message) {
 		log.Infof("write %s", msg.SinkName)
 		engine.SendingChan <- msg
 	}(msg)
-	//go write(msg)
-	//	go engine.testWr(msg)
-}
-
-func (engine *NotificationEngine) testWr(msg *Message) {
-	log.Infof("write %s", msg.SinkName)
-	engine.SendingChan <- msg
 }
 
 func (sink *Sink) StartDump() {
