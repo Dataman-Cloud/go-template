@@ -20,7 +20,7 @@ const (
 	MessageStaleTime   = time.Duration(time.Minute * 10) // message not sent after this value marked as stale
 	RetryAfer          = time.Duration(time.Second * 2)  // initial delay if message not sent successfully
 	RetryBackoffFactor = 2                               // backoff factor for a retry
-	RetryTime          = time.Minute * 10                // 每隔一段时间清理下unsend的消息 interval
+	MessageGCTime      = time.Minute * 10                // 每隔一段时间清理下unsend的消息 interval
 	MessageDeleteTime  = time.Hour * 24
 )
 
@@ -45,6 +45,7 @@ type Sink struct {
 	Mode              string `yaml:"mode"`
 	NotificationTypes string `yaml:"notification_types"`
 	DumpChan          chan *Message
+	StopChan          chan struct{}
 }
 
 type Message struct {
@@ -62,6 +63,7 @@ type NotificationEngine struct {
 	Runing      bool
 	Sinks       []*Sink
 	SendingChan chan *Message
+	StopChan    chan struct{}
 }
 
 func NewEngine() *NotificationEngine {
@@ -73,6 +75,7 @@ func NewEngine() *NotificationEngine {
 		engine_ = &NotificationEngine{
 			Runing:      false,
 			SendingChan: make(chan *Message, SendingChanSize),
+			StopChan:    make(chan struct{}),
 			Sinks:       make([]*Sink, 0),
 		}
 	})
@@ -96,13 +99,19 @@ func (engine *NotificationEngine) LoadSinks() error {
 			Url:               urlSink.Scheme + "://" + urlSink.Host + urlSink.Path,
 			Mode:              v.Get("mode"),
 			NotificationTypes: v.Get("notification_types"),
-			DumpChan:          make(chan *Message, SinkDumpingChanSize)}
+			DumpChan:          make(chan *Message, SinkDumpingChanSize),
+			StopChan:          make(chan struct{}),
+		}
 		engine_.Sinks = append(engine_.Sinks, sink)
 	}
 
 	return nil
 }
+func (engine *NotificationEngine) Stop() {
 
+	close(engine.StopChan)
+
+}
 func (engine *NotificationEngine) Start() error {
 	if engine.Runing {
 		log.Infoln("NotificationEngine already start")
@@ -140,12 +149,17 @@ func (engine *NotificationEngine) Start() error {
 
 				}
 			}
-		case <-time.Tick(RetryTime):
+		case <-time.Tick(MessageGCTime):
 			go engine.PeriodicallyrMessageGC()
 
+		case <-engine.StopChan:
+			for _, sink := range engine.Sinks {
+				close(sink.StopChan)
+			}
+			log.Info("Notification stoped")
+			return nil
 		}
 	}
-
 	return nil
 }
 
@@ -184,12 +198,17 @@ func (sink *Sink) StartDump() {
 	for {
 		select {
 		case msg := <-sink.DumpChan:
-			msg.DumpBegin = time.Now()
+			if !msg.Persisted {
+				msg.DumpBegin = time.Now()
+			}
 			if sink.Mode == MODE_STRICT {
 				go sink.StrictWrite(msg)
 			} else {
 				go sink.BestDeliverWrite(msg)
 			}
+		case <-sink.StopChan:
+			log.Infof("Sink %s stoped", sink.Name)
+			return
 		}
 	}
 }
