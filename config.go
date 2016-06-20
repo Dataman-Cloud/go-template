@@ -73,6 +73,10 @@ func loadEnvFile(envfile string) {
 				break
 			}
 
+			if len(line) == 0 {
+				continue
+			}
+
 			key, val, err := parseln(string(line))
 			if err != nil {
 				continue
