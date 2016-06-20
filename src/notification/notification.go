@@ -84,7 +84,6 @@ func NewEngine() *NotificationEngine {
 }
 
 func (engine *NotificationEngine) LoadSinks() error {
-
 	sinks := strings.Split(config.GetConfig().Notification, "|")
 
 	for _, value := range sinks {
@@ -107,11 +106,11 @@ func (engine *NotificationEngine) LoadSinks() error {
 
 	return nil
 }
+
 func (engine *NotificationEngine) Stop() {
-
 	close(engine.StopChan)
-
 }
+
 func (engine *NotificationEngine) Start() error {
 	if engine.Running {
 		log.Infoln("NotificationEngine already start")
@@ -163,7 +162,6 @@ func (engine *NotificationEngine) Start() error {
 	return nil
 }
 
-// TODO
 func (engine *NotificationEngine) HandleStaleMessages() {
 	//获取10分钟以内的消息发送
 	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-10), time.Now())
@@ -254,7 +252,6 @@ func (sink *Sink) StrictWriteRetry(msg *Message, retryAfter time.Duration) {
 }
 
 func (sink *Sink) HttpPost(msg *Message) error {
-
 	body, err := json.Marshal(msg)
 	if err != nil {
 		log.Errorf("Marshal msg. %s", err.Error())
