@@ -165,11 +165,9 @@ func (engine *NotificationEngine) Start() error {
 
 // TODO
 func (engine *NotificationEngine) HandleStaleMessages() {
-
 	//获取10分钟以内的消息发送
 	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-10), time.Now())
 	for i, _ := range msgs {
-		msgs[i].Persisted = true
 		//	log.Infof("load sinkname %s", msg.SinkName)
 		engine.Write(&msgs[i])
 	}
@@ -181,7 +179,6 @@ func (engine *NotificationEngine) PeriodicallyrMessageGC() {
 	//获取10分钟以外的消息发送
 	msgs := LoadMessages(time.Now().Add(MessageDeleteTime*-1), time.Now().Add(MessageStaleTime*-1))
 	for i, _ := range msgs {
-		msgs[i].Persisted = true
 		engine.Write(&msgs[i])
 	}
 

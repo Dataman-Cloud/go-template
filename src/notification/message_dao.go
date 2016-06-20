@@ -54,6 +54,10 @@ func LoadMessages(from time.Time, to time.Time) []Message {
 		log.Errorln(" Query from db error: " + err.Error())
 	}
 
+	for i, _ := range msgs {
+		msgs[i].Persisted = true
+	}
+
 	return msgs
 }
 
