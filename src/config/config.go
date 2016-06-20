@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"bufio"
@@ -16,48 +16,65 @@ type Config struct {
 	A_MYSQL_PASSWD string
 	LogLevel       log.Level
 	Arr            []string
+	UserName       string
+	PassWord       string
+	Host           string
+	Port           uint16
+	DataBase       string
+	Notification   string
 }
+
+func GetConfig() Config {
+	return config
+}
+
+var config Config
 
 func InitConfig(envFile string) *Config {
 	loadEnvFile(envFile)
 
-	config := &Config{}
+	/*	env1 := os.Getenv("ENV1")
+		if env1 == "" {
+			exitMissingEnv("ENV1")
+		}
 
-	env1 := os.Getenv("ENV1")
-	if env1 == "" {
-		exitMissingEnv("ENV1")
-	}
+		env2 := os.Getenv("ENV2")
+		if env2 == "" {
+			exitMissingEnv("ENV2")
+		}
 
-	env2 := os.Getenv("ENV2")
-	if env2 == "" {
-		exitMissingEnv("ENV2")
-	}
+		a_mysql_passwd := os.Getenv("A_MYSQL_PASSWD")
+		if a_mysql_passwd == "" {
+			exitMissingEnv("A_MYSQL_PASSWD")
+		}
 
-	a_mysql_passwd := os.Getenv("A_MYSQL_PASSWD")
-	if a_mysql_passwd == "" {
-		exitMissingEnv("A_MYSQL_PASSWD")
-	}
+		log_level := os.Getenv("LOG_LEVEL")
+		if log_level == "error" {
+			config.LogLevel = log.ErrorLevel
+		} else if log_level == "info" {
+			config.LogLevel = log.InfoLevel
+		} else {
+			config.LogLevel = log.DebugLevel
+		}
 
-	log_level := os.Getenv("LOG_LEVEL")
-	if log_level == "error" {
-		config.LogLevel = log.ErrorLevel
-	} else if log_level == "info" {
-		config.LogLevel = log.InfoLevel
-	} else {
-		config.LogLevel = log.DebugLevel
-	}
+		arr := os.Getenv("ARR")
+		if arr == "" {
+			exitMissingEnv("ARR")
+		}
 
-	arr := os.Getenv("ARR")
-	if arr == "" {
-		exitMissingEnv("ARR")
-	}
-
-	config.Env1 = env1
-	config.Env2 = env2
-	config.A_MYSQL_PASSWD = a_mysql_passwd
-	config.Arr = strings.Split(arr, ",")
-
-	return config
+		config.Env1 = env1
+		config.Env2 = env2
+		config.A_MYSQL_PASSWD = a_mysql_passwd
+		config.Arr = strings.Split(arr, ",")
+	*/
+	config.Host = "127.0.0.1"
+	config.UserName = "root"
+	config.PassWord = "111111"
+	config.Port = 3306
+	config.DataBase = "notification"
+	config.Notification = `http://127.0.0.1:8080/postMan?name=li&mode=strict&notification_types=APP_CREATION|
+							http://127.0.0.1:8089/postMan?name=fang&mode=strict&notification_types=APP_CREATION`
+	return &config
 }
 
 func loadEnvFile(envfile string) {
