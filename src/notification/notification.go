@@ -60,7 +60,7 @@ type Message struct {
 }
 
 type NotificationEngine struct {
-	Runing      bool
+	Running     bool
 	Sinks       []*Sink
 	SendingChan chan *Message
 	StopChan    chan struct{}
@@ -73,7 +73,7 @@ func NewEngine() *NotificationEngine {
 
 	once.Do(func() {
 		engine_ = &NotificationEngine{
-			Runing:      false,
+			Running:     false,
 			SendingChan: make(chan *Message, SendingChanSize),
 			StopChan:    make(chan struct{}),
 			Sinks:       make([]*Sink, 0),
@@ -113,7 +113,7 @@ func (engine *NotificationEngine) Stop() {
 
 }
 func (engine *NotificationEngine) Start() error {
-	if engine.Runing {
+	if engine.Running {
 		log.Infoln("NotificationEngine already start")
 		return nil
 	}
