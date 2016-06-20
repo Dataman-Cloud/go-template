@@ -164,7 +164,7 @@ func (engine *NotificationEngine) Start() error {
 
 func (engine *NotificationEngine) HandleStaleMessages() {
 	//获取10分钟以内的消息发送
-	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-10), time.Now())
+	msgs := LoadMessages(time.Now().Add(MessageStaleTime*-1), time.Now())
 	for i, _ := range msgs {
 		//	log.Infof("load sinkname %s", msg.SinkName)
 		engine.Write(&msgs[i])

@@ -57,7 +57,7 @@ func main() {
 
 	go engin.Start()
 
-	engin.Write(message)
+	//engin.Write(message)
 
 	for {
 		select {
